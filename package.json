@@ -13,7 +13,7 @@
     "grunt-mocha-test": "",
     "chai": "",
     "connect": "",
-    "zombie": ""
+    "chimera": "https://github.com/legnaleurc/node-chimera/tarball/qt4"
   },
   "scripts": {
     "test": "grunt test"
