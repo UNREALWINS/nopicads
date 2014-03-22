@@ -565,6 +565,9 @@ var $;
       if (typeof rule === 'string' || rule instanceof String) {
         return dispatchByString(rule, url_3);
       }
+      if (typeof rule === 'function') {
+        return null;
+      }
       return dispatchByObject(rule, url_6);
     }
 
