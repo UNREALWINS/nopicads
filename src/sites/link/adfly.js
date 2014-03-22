@@ -1,11 +1,8 @@
 (function () {
   'use strict';
 
-  var hostRule = /^(www\.)?adf\.(ly|acb\.im|sazlina\.com)|[jq]\.gs|go\.(phpnulledscripts|nicoblog-games)\.com|ay\.gy|(chathu|alien)\.apkmania\.co|ksn\.mx|goto\.adflytutor\.com|dl\.apkpro\.net|adf(ly\.itsrinaldo|\.tuhoctoan)\.net|.*\.gamecopyworld\.com$/;
-
   $.register({
     rule: {
-      host: hostRule,
       path: /\/locked$/,
       query: /url=([^&]+)/,
     },
@@ -16,16 +13,14 @@
   });
 
   $.register({
-    rule: {
-      host: hostRule,
-      // FIXME this pattern is not stable
-      path: /^\/([a-z\/]{2,})?$/,
-    },
-  });
-
-  $.register({
-    rule: {
-      host: hostRule,
+    rule: function () {
+      var h = $.$('html[id="adfly_html"]');
+      var b = $.$('body[id="home"]');
+      if (h && b) {
+        return true;
+      } else {
+        return null;
+      }
     },
     ready: function () {
       $.removeNodes('iframe');
@@ -55,10 +50,6 @@
       }
       $.openLink(h);
     },
-  });
-
-  $.register({
-    rule: 'http://ad7.biz/*.php',
   });
 
   $.register({
