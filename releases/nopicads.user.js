@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.32.0
+// @version        4.33.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.github.com/legnaleurc/nopicads/v4.32.0/css/align_center.css
-// @resource       scaleImage https://raw.github.com/legnaleurc/nopicads/v4.32.0/css/scale_image.css
-// @resource       bgImage https://raw.github.com/legnaleurc/nopicads/v4.32.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.github.com/legnaleurc/nopicads/v4.33.0/css/align_center.css
+// @resource       scaleImage https://raw.github.com/legnaleurc/nopicads/v4.33.0/css/scale_image.css
+// @resource       bgImage https://raw.github.com/legnaleurc/nopicads/v4.33.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -282,9 +282,9 @@ var $;
       var l = document.createElement('a');
       l.href = url;
       var reqHost = l.hostname;
-      headers['Host'] = reqHost || window.location.host;
-      headers['Origin'] = window.location.origin;
-      headers['Referer'] = window.location.href;
+      headers.Host = reqHost || window.location.host;
+      headers.Origin = window.location.origin;
+      headers.Referer = window.location.href;
       headers['X-Requested-With'] = 'XMLHttpRequest';
       var controller = GM.xmlhttpRequest({
         method: method,
@@ -319,7 +319,7 @@ var $;
       }
     };
     $.get = function (url, data, callback, headers) {
-      var data = toQuery(data);
+      data = toQuery(data);
       data = data!==''? '?' + data : '';
       headers = headers || {};
       return ajax('GET', url + data, '', headers, callback);
@@ -654,7 +654,15 @@ var $;
     function dispatchByObject (rule, url_6) {
       var matched = {};
       var passed = _.C(rule).all(function (pattern, part) {
-        matched[part] = url_6[part].match(pattern);
+        if (pattern instanceof RegExp) {
+          matched[part] = url_6[part].match(pattern);
+        } else if (pattern instanceof Array) {
+          var r = _.C(pattern).find(function (p) {
+            var m = url_6[part].match(p);
+            return m || _.nop;
+          });
+          matched[part] = r ? r.payload : null;
+        }
         return !!matched[part];
       });
       return passed ? matched : null;
@@ -778,7 +786,9 @@ var $;
         },
       };
       _.C([unsafeWindow, unsafeWindow.document.body]).each(function (o) {
-        if (o == null) {return;}
+        if (!o) {
+          return;
+        }
         o.onbeforeunload = undefined;
         Object.defineProperty(o, 'onbeforeunload', seal);
       });
@@ -1012,31 +1022,23 @@ $.register({
 
 (function () {
   'use strict';
-  function combineRegExp (res) {
-    var re = res.map(function (re) {
-      return re.source;
-    }).join('|');
-    re = new RegExp('^' + re + '$');
-    return re;
-  }
   var hostRule = [
-    /(www\.)?adf\.(ly|acb\.im|sazlina\.com|animechiby\.com)/,
-    /[jq]\.gs/,
-    /go\.(phpnulledscripts|nicoblog-games)\.com/,
-    /ay\.gy/,
-    /(chathu|alien)\.apkmania\.co/,
-    /ksn\.mx/,
-    /goto\.adflytutor\.com/,
-    /dl\.apkpro\.net/,
-    /adf(ly\.itsrinaldo|\.tuhoctoan)\.net/,
-    /.*\.gamecopyworld\.com/,
-    /adv\.coder143\.com/,
-    /(dl|david)\.nhachot\.info/,
-    /file\.tamteo\.com/,
-    /(n|u)\.shareme\.in/,
-    /ddl\.animesave\.com/,
+    /^(www\.)?adf\.(ly|acb\.im|sazlina\.com|animechiby\.com)$/,
+    /^[jq]\.gs$/,
+    /^go\.(phpnulledscripts|nicoblog-games)\.com$/,
+    /^ay\.gy$/,
+    /^(chathu|alien)\.apkmania\.co$/,
+    /^ksn\.mx$/,
+    /^goto\.adflytutor\.com$/,
+    /^dl\.apkpro\.net$/,
+    /^adf(ly\.itsrinaldo|\.tuhoctoan)\.net$/,
+    /^.*\.gamecopyworld\.com$/,
+    /^adv\.coder143\.com$/,
+    /^(dl|david)\.nhachot\.info$/,
+    /^file\.tamteo\.com$/,
+    /^(n|u)\.shareme\.in$/,
+    /^ddl\.animesave\.com$/,
   ];
-  hostRule = combineRegExp(hostRule);
   $.register({
     rule: {
       host: hostRule,
@@ -1407,33 +1409,24 @@ $.register({
       run(true);
     },
   });
-  function combineRegExp (res) {
-    var re = res.map(function (re) {
-      return re.source;
-    }).join('|');
-    re = new RegExp('^' + re + '$');
-    return re;
-  }
-  var hostRules = [
-    /gx\.si/,
-    /adwat\.ch/,
-    /(fly2url|urlwiz|xafox)\.com/,
-    /(zpoz|ultry)\.net/,
-    /(wwy|myam)\.me/,
-    /ssl\.gs/,
-    /link\.tl/,
-    /hit\.us/,
-    /shortit\.in/,
-    /(adbla|tl7)\.us/,
-    /www\.adjet\.eu/,
-    /srk\.gs/,
-    /cun\.bz/,
-    /miniurl\.tk/,
-  ];
-  hostRules = combineRegExp(hostRules);
   $.register({
     rule: {
-      host: hostRules,
+      host: [
+        /^gx\.si$/,
+        /^adwat\.ch$/,
+        /^(fly2url|urlwiz|xafox)\.com$/,
+        /^(zpoz|ultry)\.net$/,
+        /^(wwy|myam)\.me$/,
+        /^ssl\.gs$/,
+        /^link\.tl$/,
+        /^hit\.us$/,
+        /^shortit\.in$/,
+        /^(adbla|tl7)\.us$/,
+        /^www\.adjet\.eu$/,
+        /^srk\.gs$/,
+        /^cun\.bz$/,
+        /^miniurl\.tk$/,
+      ],
       path: /^\/.+/,
     },
     ready: run,
@@ -1933,18 +1926,28 @@ $.register({
   },
 });
 
-$.register({
-  rule: {
-    host: /^(www\.)?fundurl\.com$/,
-    path: /^\/(go-\w+|load\.php)$/
-  },
-  ready: function (m) {
-    'use strict';
-    var f = $('iframe[name=fpage3]');
-    $.openLink(f.src);
-  },
-});
-// kate: space-indent on; indent-width 2;
+(function () {
+  'use strict';
+  $.register({
+    rule: {
+      host: /^(www\.)?fundurl\.com$/,
+      query: /i=([^&]+)/,
+    },
+    start: function (m) {
+      $.openLink(m.query[1]);
+    },
+  });
+  $.register({
+    rule: {
+      host: /^(www\.)?fundurl\.com$/,
+      path: /^\/(go-\w+|load\.php)$/,
+    },
+    ready: function () {
+      var f = $('iframe[name=fpage3]');
+      $.openLink(f.src);
+    },
+  });
+})();
 
 $.register({
   rule: [
@@ -2671,18 +2674,20 @@ $.register({
 });
 
 (function() {
-  function combineRegExp (res) {
-    var re = res.map(function (re) {
-      return re.source;
-    }).join('|');
-    re = new RegExp('^' + re + '$');
-    return re;
-  }
+  'use strict';
   var hostRules = [
-    /^(([\w]{8}|www)\.)?(allanalpass|a[mn]y|cash4files|deb|drstickyfingers|dyo|fapoff|filesonthe|free(an|gaysitepass)|galleries|goneviral|hornywood|link(babes|bucks(media)?)|megaline|miniurls|picbucks|poontown|qqc|rqq|seriousdeals|sexpalace|these(blog|forum)s|tinylinks|tnabucks|tubeviral|ultrafiles|urlbeat|whackyvidz|youfap|yyv|zff)\.(com?|net|gs|me|tv|bz|us)/,
+    /^(([\w]{8}|www)\.)?(allanalpass|cash4files|drstickyfingers|fapoff|freegaysitepass|(gone|tube)viral|(pic|tna)bucks|whackyvidz)\.com$/,
+    /^(([\w]{8}|www)\.)?(a[mn]y|deb|dyo|sexpalace)\.gs$/,
+    /^(([\w]{8}|www)\.)?(filesonthe|poontown|seriousdeals|ultrafiles|urlbeat)\.net$/,
+    /^(([\w]{8}|www)\.)?freean\.us$/,
+    /^(([\w]{8}|www)\.)?galleries\.bz$/,
+    /^(([\w]{8}|www)\.)?hornywood\.tv$/,
+    /^(([\w]{8}|www)\.)?link(babes|bucks)\.com$/,
+    /^(([\w]{8}|www)\.)?(megaline|miniurls|qqc|rqq|tinylinks|yyv|zff)\.co$/,
+    /^(([\w]{8}|www)\.)?(these(blog|forum)s)\.com$/,
+    /^(([\w]{8}|www)\.)?youfap\.me$/,
     /^warning-this-linkcode-will-cease-working-soon\.www\.linkbucksdns\.com$/,
   ];
-  hostRules = combineRegExp(hostRules);
   $.register({
     rule: {
       host: hostRules,
@@ -2692,7 +2697,7 @@ $.register({
       $.removeAllTimer();
       $.resetCookies();
       $.removeNodes('iframe');
-      if (m.path[1] != null) {
+      if (m.path[1] !== null) {
         $.openLink(m.path[1]);
       }
     }
@@ -2754,7 +2759,6 @@ $.register({
     },
   });
 })();
-// kate: space-indent on; indent-width 2;
 
 $.register({
   rule: 'http://lix.in/-*',
@@ -3375,19 +3379,9 @@ $.register({
   },
 });
 
-$.register({
-  rule: {
-    host: /^sh\.st|dh10thbvu\.com|u2ks\.com$/,
-    path: /^\/[\d\w]+/,
-  },
-  ready: function () {
-    'use strict';
-    $.removeNodes('iframe');
-    var m = $.searchScripts(/sessionId: "([\d\w]+)",/);
-    if (!m) {
-      throw new _.NoPicAdsError('script content changed');
-    }
-    var sessionId = m[1];
+(function () {
+  'use strict';
+  function afterGotSessionId (sessionId) {
     var X_NewRelic_ID = $.searchScripts(/xpid:"([^"]+)"/);
     var Fingerprint = unsafeWindow.Fingerprint;
     var browserToken = null;
@@ -3413,23 +3407,34 @@ $.register({
         }
       }, header);
     }, 1000);
-  },
-});
-
-$.register({
-  rule: {
-  	host: /^shr(44|55|77)\.com|cpv\.(bz|li)|cpv\.acb\.im$/
-  },
-  ready: function () {
-    'use strict';
-    var l = $.searchScripts(/\$\('a#loading'\)\.attr\('href',"([^"]+)"\);/);
-    if (!l) {
-      throw new _.NoPicAdsError('site changed');
-    }
-     $.openLink(l[1]);
-  },
-});
-// kate: space-indent on; indent-width 2;
+  }
+  $.register({
+    rule: {
+      host: /^sh\.st|dh10thbvu\.com|u2ks\.com$/,
+      path: /^\/[\d\w]+/,
+    },
+    ready: function () {
+      $.removeNodes('iframe');
+      var m = $.searchScripts(/sessionId: "([\d\w]+)",/);
+      if (m) {
+        afterGotSessionId(m[1]);
+        return;
+      }
+      var o = MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+          var m = $.searchScripts(/sessionId: "([\d\w]+)",/);
+          if (m) {
+            o.disconnect();
+            afterGotSessionId(m[1]);
+          }
+        });
+      });
+      o.observe(document.body, {
+        childList: true,
+      });
+    },
+  });
+})();
 
 $.register({
   rule: {
@@ -3499,6 +3504,17 @@ $.register({
     'use strict';
     var i = $('#ImagenVisualizada');
     $.openImage(i.src);
+  },
+});
+
+$.register({
+  rule: {
+    host: /^theholycross\.link2dollar\.com$/,
+  },
+  ready: function () {
+    'use strict';
+    var m = $.searchScripts(/rlink = '([^']+)'/);
+    $.openLink(m[1]);
   },
 });
 
