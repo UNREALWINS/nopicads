@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.33.0
+// @version        4.34.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.github.com/legnaleurc/nopicads/v4.33.0/css/align_center.css
-// @resource       scaleImage https://raw.github.com/legnaleurc/nopicads/v4.33.0/css/scale_image.css
-// @resource       bgImage https://raw.github.com/legnaleurc/nopicads/v4.33.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.github.com/legnaleurc/nopicads/v4.34.0/css/align_center.css
+// @resource       scaleImage https://raw.github.com/legnaleurc/nopicads/v4.34.0/css/scale_image.css
+// @resource       bgImage https://raw.github.com/legnaleurc/nopicads/v4.34.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -1685,36 +1685,30 @@ $.register({
     ready: function (m) {
       $.removeNodes('iframe');
       if (m.host[1] == null) {
-        var mainFrame = 'http://cur.lv/redirect_curlv.php?code=' + escape(document.location.pathname.substring(1));
+        var mainFrame = 'http://cur.lv/redirect_curlv.php?code=' + escape(window.location.pathname.substring(1));
       } else {
-        var mainFrame = 'http://cur.lv/redirect_curlv.php?zone=' + m.host[1] + '&name=' + escape(document.location.pathname.substring(1));
+        var mainFrame = 'http://cur.lv/redirect_curlv.php?zone=' + m.host[1] + '&name=' + escape(window.location.pathname.substring(1));
       }
-      $.get(mainFrame, {}, 
-        function(mainFrameContent) {
-          try {
-            var docMainFrame = $.toDOM(mainFrameContent);
-          } catch (e) {
-            throw new _.NoPicAdsError('main frame changed');
-          }
-          var rExtractLink = /onclick="open_url\('([^']+)',\s*'go'\)/;
-          var innerFrames = $.$$('frameset > frame', docMainFrame).each(
-            function(currFrame) {
-              var currFrameAddr = currFrame.src.replace(location.hostname,m.host[2]);
-              $.get(currFrameAddr, {},
-                function(currFrameContent) {
-                  var aRealLink = rExtractLink.exec(currFrameContent);
-                  if (aRealLink == null || aRealLink[1] == null) {return;}
-                  var realLink = aRealLink[1];
-                  $.openLink(realLink);
-                }
-              );
-          });
+      $.get(mainFrame, {}, function(mainFrameContent) {
+        try {
+          var docMainFrame = $.toDOM(mainFrameContent);
+        } catch (e) {
+          throw new _.NoPicAdsError('main frame changed');
         }
-      );
+        var rExtractLink = /onclick="open_url\('([^']+)',\s*'go'\)/;
+        var innerFrames = $.$$('frameset > frame', docMainFrame).each(function (currFrame) {
+          var currFrameAddr = window.location.origin + '/' + currFrame.getAttribute('src');
+          $.get(currFrameAddr, {}, function(currFrameContent) {
+            var aRealLink = rExtractLink.exec(currFrameContent);
+            if (aRealLink == null || aRealLink[1] == null) {return;}
+            var realLink = aRealLink[1];
+            $.openLink(realLink);
+          });
+        });
+      });
     },
   });
 })();
-// kate: space-indent on; indent-width 2;
 
 $.register({
   rule: {
@@ -2645,7 +2639,8 @@ $.register({
 
 $.register({
   rule: {
-    host: /^free\.link2dollar\.com$/,
+    host: /\.link2dollar\.com$/,
+    path: /^\/\d+$/,
   },
   ready: function () {
     'use strict';
@@ -2867,9 +2862,18 @@ $.register({
   }
   $.register({
     rule: {
-      host: /^(hentai-hosting|miragepics|funextra\.hostzi|imgrex)\.com|bilder\.nixhelp\.de|imagecurl\.(com|org)|imagevau\.eu|img\.deli\.sh|imgking\.us|image(pong|back)\.info$/,
+      host: [
+        /^(hentai-hosting|miragepics|funextra\.hostzi|imgrex)\.com$/,
+        /^bilder\.nixhelp\.de$/,
+        /^imagecurl\.(com|org)$/,
+        /^imagevau\.eu$/,
+        /^img\.deli\.sh$/,
+        /^imgking\.us$/,
+        /^image(pong|back)\.info$/,
+        /^imgdream\.net$/,
+      ],
       path: /^\/viewer\.php$/,
-      query: /^\?file=([^&]+)/,
+      query: /file=([^&]+)/,
     },
     start: helper,
   });
@@ -2877,7 +2881,7 @@ $.register({
     rule: {
       host: /^(dwimg|imgsin|www\.pictureshoster)\.com$/,
       path: /^\/viewer\.php$/,
-      query: /^\?file=([^&]+)/,
+      query: /file=([^&]+)/,
     },
     start: function (m) {
       $.openImage('/files/' + m.query[1]);
@@ -2887,7 +2891,7 @@ $.register({
     rule: {
       host: /imageview\.me|244pix\.com|imgnip\.com|postimg\.net$/,
       path: /^\/viewerr.*\.php$/,
-      query: /^\?file=([^&]+)/,
+      query: /file=([^&]+)/,
     },
     start: helper,
   });
@@ -2895,7 +2899,7 @@ $.register({
     rule: {
       host: /^catpic\.biz$/,
       path: /^(\/\w)?\/viewer\.php$/,
-      query: /^\?file=([^&]+)/,
+      query: /file=([^&]+)/,
     },
     start: function (m) {
       var url = _.T('{0}/images/{1}');
@@ -3504,17 +3508,6 @@ $.register({
     'use strict';
     var i = $('#ImagenVisualizada');
     $.openImage(i.src);
-  },
-});
-
-$.register({
-  rule: {
-    host: /^theholycross\.link2dollar\.com$/,
-  },
-  ready: function () {
-    'use strict';
-    var m = $.searchScripts(/rlink = '([^']+)'/);
-    $.openLink(m[1]);
   },
 });
 
