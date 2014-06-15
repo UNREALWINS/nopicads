@@ -11,6 +11,9 @@
 #msg {
   margin: 3em;
   opacity: 0;
+}
+
+.animated {
   -webkit-transition-property: opacity;
   transition-property: opacity;
   -webkit-transition-duration: 1s;

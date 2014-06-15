@@ -26,6 +26,8 @@ function commit () {}
 
 
   render = function (data) {
+    view.msg.addClass('animated');
+
     _.each(data.options, function (v, k) {
       var type = v.type;
 
