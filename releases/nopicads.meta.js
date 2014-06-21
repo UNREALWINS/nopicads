@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.34.0
+// @version        4.35.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.github.com/legnaleurc/nopicads/v4.34.0/css/align_center.css
-// @resource       scaleImage https://raw.github.com/legnaleurc/nopicads/v4.34.0/css/scale_image.css
-// @resource       bgImage https://raw.github.com/legnaleurc/nopicads/v4.34.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
