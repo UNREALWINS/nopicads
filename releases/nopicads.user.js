@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.35.0
+// @version        4.35.1
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,12 +17,853 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
+
+var _ = typeof module !== 'undefined' ? module.exports : {};
+(function () {
+  'use strict';
+  function setupStack () {
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    } else if (!this.hasOwnProperty('stack')) {
+      var stack = (new Error()).stack.split('\n').slice(2);
+      var e = stack[0].match(/^.*@(.*):(\d*)$/);
+      this.fileName = e[1];
+      this.lineNumber = parseInt(e[2], 10);
+      this.stack = stack.join('\n');
+    }
+  }
+  function NoPicAdsError (message) {
+    setupStack.call(this);
+    this.message = message;
+  }
+  NoPicAdsError.prototype = Object.create(Error.prototype);
+  NoPicAdsError.prototype.constructor = NoPicAdsError;
+  NoPicAdsError.prototype.name = 'NoPicAdsError';
+  NoPicAdsError.extend = function (protoProps, staticProps) {
+    var parent = this, child = function () {
+      setupStack.call(this);
+      protoProps.constructor.apply(this, arguments);
+    };
+    extend(child, parent, staticProps);
+    child.prototype = Object.create(parent.prototype);
+    extend(child.prototype, protoProps);
+    child.prototype.constructor = child;
+    child.super = parent.prototype;
+    return child;
+  };
+  NoPicAdsError.super = null;
+  _.NoPicAdsError = NoPicAdsError;
+  function any (c, fn) {
+    if (c.some) {
+      return c.some(fn);
+    }
+    if (typeof c.length === 'number') {
+      return Array.prototype.some.call(c, fn);
+    }
+    return Object.keys(c).some(function (k) {
+      return fn(c[k], k, c);
+    });
+  }
+  function all (c, fn) {
+    if (c.every) {
+      return c.every(fn);
+    }
+    if (typeof c.length === 'number') {
+      return Array.prototype.every.call(c, fn);
+    }
+    return Object.keys(c).every(function (k) {
+      return fn(c[k], k, c);
+    });
+  }
+  function each (c, fn) {
+    if (c.forEach) {
+      c.forEach(fn);
+    } else if (typeof c.length === 'number') {
+      Array.prototype.forEach.call(c, fn);
+    } else {
+      Object.keys(c).forEach(function (k) {
+        fn(c[k], k, c);
+      });
+    }
+  }
+  function map (c, fn) {
+    if (c.map) {
+      return c.map(fn);
+    }
+    if (typeof c.length === 'number') {
+      return Array.prototype.map.call(c, fn);
+    }
+    return Object.keys(c).map(function (k) {
+      return fn(c[k], k, c);
+    });
+  }
+  function extend(c) {
+    Array.prototype.slice.call(arguments, 1).forEach(function (source) {
+      if (!source) {
+        return;
+      }
+      _.C(source).each(function (v, k) {
+        c[k] = v;
+      });
+    });
+    return c;
+  }
+  function CollectionProxy (collection) {
+    this._c = collection;
+  }
+  CollectionProxy.prototype.size = function () {
+    if (typeof this._c.length === 'number') {
+      return this._c.length;
+    }
+    return Object.keys(c).length;
+  };
+  CollectionProxy.prototype.at = function (k) {
+    return this._c[k];
+  };
+  CollectionProxy.prototype.each = function (fn) {
+    each(this._c, fn);
+    return this;
+  };
+  CollectionProxy.prototype.find = function (fn) {
+    var result;
+    any(this._c, function (value, index, self) {
+      var tmp = fn(value, index, self);
+      if (tmp !== _.nop) {
+        result = {
+          key: index,
+          value: value,
+          payload: tmp,
+        };
+        return true;
+      }
+      return false;
+    });
+    return result;
+  };
+  CollectionProxy.prototype.all = function (fn) {
+    return all(this._c, fn);
+  };
+  CollectionProxy.prototype.map = function (fn) {
+    return map(this._c, fn);
+  };
+  _.C = function (collection) {
+    return new CollectionProxy(collection);
+  };
+  _.T = function (s) {
+    if (typeof s === 'string') {
+    } else if (s instanceof String) {
+      s = s.toString();
+    } else {
+      throw new NoPicAdsError('template must be a string');
+    }
+    var T = {
+      '{{': '{',
+      '}}': '}',
+    };
+    return function () {
+      var args = Array.prototype.slice.call(arguments);
+      var kwargs = args[args.length-1];
+      return s.replace(/\{\{|\}\}|\{([^\}]+)\}/g, function (m, key) {
+        if (T.hasOwnProperty(m)) {
+          return T[m];
+        }
+        if (args.hasOwnProperty(key)) {
+          return args[key];
+        }
+        if (kwargs.hasOwnProperty(key)) {
+          return kwargs[key];
+        }
+        return m;
+      });
+    };
+  };
+  _.P = function (fn) {
+    if (typeof fn !== 'function') {
+      throw new _.NoPicAdsError('must give a function');
+    }
+    var slice = Array.prototype.slice;
+    var args = slice.call(arguments, 1);
+    return function () {
+      return fn.apply(this, args.concat(slice.call(arguments)));
+    };
+  };
+  _.nop = function () {
+  };
+  function log (method, args) {
+    args = Array.prototype.slice.call(args);
+    if (typeof args[0] === 'string' || args[0] instanceof String) {
+      args[0] = 'NoPicAds: ' + args[0];
+    } else {
+      args.unshift('NoPicAds:');
+    }
+    var f = console[method];
+    if (typeof f === 'function') {
+      console[method].apply(console, args);
+    }
+  }
+  _.info = function () {
+    log('info', arguments);
+  };
+  _.warn = function () {
+    log('warn', arguments);
+  };
+})();
+
+var $;
+(function () {
+  'use strict';
+  function bootstrap (context) {
+    var _ = context._;
+    var window = context.window;
+    var unsafeWindow = context.unsafeWindow;
+    var GM = context.GM;
+    var document = window.document;
+    var DomNotFoundError = _.NoPicAdsError.extend({
+      name: 'DomNotFoundError',
+      constructor: function (selector) {
+        DomNotFoundError.super.constructor.call(this, _.T('`{0}` not found')(selector));
+      },
+    });
+    var $ = function (selector, context) {
+      if (!context || !context.querySelector) {
+        context = document;
+      }
+      var n = context.querySelector(selector);
+      if (!n) {
+        throw new DomNotFoundError(selector);
+      }
+      return n;
+    };
+    $.$ = function (selector, context) {
+      try {
+        return $(selector, context);
+      } catch (e) {
+        _.info(e.message);
+        return null;
+      }
+    };
+    $.$$ = function (selector, context) {
+      if (!context || !context.querySelectorAll) {
+        context = document;
+      }
+      var ns = context.querySelectorAll(selector);
+      return _.C(ns);
+    };
+    function deepJoin (prefix, object) {
+      return _.C(object).map(function (v, k) {
+        var key = _.T('{0}[{1}]')(prefix, k);
+        if (typeof v === 'object') {
+          return deepJoin(key, v);
+        }
+        return _.T('{0}={1}').apply(this, [key, v].map(encodeURIComponent));
+      }).join('&');
+    }
+    function toQuery (data) {
+      if (typeof data === 'string') {
+        return data;
+      }
+      if (data instanceof String) {
+        return data.toString();
+      }
+      return _.C(data).map(function (v, k) {
+        if (typeof v === 'object') {
+          return deepJoin(k, v);
+        }
+        return _.T('{0}={1}').apply(this, [k, v].map(encodeURIComponent));
+      }).join('&');
+    }
+    function ajax (method, url, data, headers, callback) {
+      var l = document.createElement('a');
+      l.href = url;
+      var reqHost = l.hostname;
+      headers.Host = reqHost || window.location.host;
+      headers.Origin = window.location.origin;
+      headers.Referer = window.location.href;
+      headers['X-Requested-With'] = 'XMLHttpRequest';
+      var controller = GM.xmlhttpRequest({
+        method: method,
+        url: url,
+        data: data,
+        headers: headers,
+        onload: function (response) {
+          var headers = {
+            get: function (key) {
+              return this[key.toLowerCase()];
+            },
+          };
+          response.responseHeaders.split(/[\r\n]+/g).filter(function (v) {
+            return v.length !== 0;
+          }).map(function (v) {
+            return v.split(/:\s+/);
+          }).forEach(function (v) {
+            headers[v[0].toLowerCase()] = v[1];
+          });
+          callback(response.responseText, headers);
+        },
+      });
+      return controller;
+    }
+    $.toDOM = function(rawHTML) {
+      try {
+        var parser = new DOMParser();
+        var DOMHTML = parser.parseFromString(rawHTML, "text/html");
+        return DOMHTML;
+      } catch (e) {
+        throw new _.NoPicAdsError('could not parse HTML to DOM');
+      }
+    };
+    $.get = function (url, data, callback, headers) {
+      data = toQuery(data);
+      data = data!==''? '?' + data : '';
+      headers = headers || {};
+      return ajax('GET', url + data, '', headers, callback);
+    };
+    $.post = function (url, data, callback, headers) {
+      data = toQuery(data);
+      var h = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Content-Length': data.length,
+      };
+      if (headers) {
+        _.C(headers).each(function (v, k) {
+          h[k] = v;
+        });
+      }
+      return ajax('POST', url, data, h, callback);
+    };
+    function go (path, params, method) {
+      method = method || 'post';
+      var form = document.createElement('form');
+      form.method = method;
+      form.action = path;
+      _.C(params).each(function (value, key) {
+          var input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    }
+    $.openLinkByPost = function (url, data) {
+      go(url, data, 'post');
+    };
+    $.openLink = function (to) {
+      if (!to) {
+        _.warn('false URL');
+        return;
+      }
+      var from = window.location.toString();
+      _.info(_.T('{0} -> {1}')(from, to));
+      window.top.location.replace(to);
+    };
+    $.openLinkWithReferer = function (to) {
+      if (!to) {
+        _.warn('false URL');
+        return;
+      }
+      var from = window.location.toString();
+      _.info(_.T('{0} -> {1}')(from, to));
+      window.location.href = to;
+    };
+    $.openImage = function (imgSrc) {
+      if (config.redirectImage) {
+        $.openLink(imgSrc);
+      }
+    };
+    $.removeAllTimer = function () {
+      var intervalID = window.setInterval(_.nop, 10);
+      while (intervalID > 0) {
+        window.clearInterval(intervalID--);
+      }
+    };
+    $.enableScrolling = function () {
+      var o = document.compatMode === 'CSS1Compat' ? document.documentElement : document.body;
+      o.style.overflow = '';
+    };
+    function toggleShrinking () {
+      this.classList.toggle('nopicads-shrinked');
+    }
+    function checkScaling () {
+      var nw = this.naturalWidth;
+      var nh = this.naturalHeight;
+      var cw = document.documentElement.clientWidth;
+      var ch = document.documentElement.clientHeight;
+      if ((nw > cw || nh > ch) && !this.classList.contains('nopicads-resizable')) {
+        this.classList.add('nopicads-resizable');
+        this.classList.add('nopicads-shrinked');
+        this.addEventListener('click', toggleShrinking);
+      } else {
+        this.removeEventListener('click', toggleShrinking);
+        this.classList.remove('nopicads-shrinked');
+        this.classList.remove('nopicads-resizable');
+      }
+    }
+    function scaleImage (i) {
+      var style = GM.getResourceText('scaleImage');
+      GM.addStyle(style);
+      if (i.naturalWidth && i.naturalHeight) {
+        checkScaling.call(i);
+      } else {
+        i.addEventListener('load', checkScaling);
+      }
+      var h;
+      window.addEventListener('resize', function () {
+        window.clearTimeout(h);
+        h = window.setTimeout(checkScaling.bind(i), 100);
+      });
+    }
+    function changeBackground () {
+      var bgImage = GM.getResourceURL('bgImage');
+      document.body.style.backgroundColor = '#222222';
+      document.body.style.backgroundImage = _.T('url(\'{0}\')')(bgImage);
+    }
+    function alignCenter () {
+      var style = GM.getResourceText('alignCenter');
+      GM.addStyle(style);
+    }
+    function injectStyle (d, i) {
+      $.removeNodes('style, link[rel=stylesheet]');
+      d.id = 'nopicads-wrapper';
+      i.id = 'nopicads-image';
+    }
+    $.replace = function (imgSrc) {
+      if (!config.redirectImage) {
+        return;
+      }
+      if (!imgSrc) {
+        _.warn('false url');
+        return;
+      }
+      _.info(_.T('replacing body with `{0}` ...')(imgSrc));
+      $.removeAllTimer();
+      $.enableScrolling();
+      document.body = document.createElement('body');
+      var d = document.createElement('div');
+      document.body.appendChild(d);
+      var i = document.createElement('img');
+      i.src = imgSrc;
+      d.appendChild(i);
+      if (config.alignCenter || config.scaleImage) {
+        injectStyle(d, i);
+      }
+      if (config.alignCenter) {
+        alignCenter();
+      }
+      if (config.changeBackground) {
+        changeBackground();
+      }
+      if (config.scaleImage) {
+        scaleImage(i);
+      }
+    };
+    $.removeNodes = function (selector, context) {
+      $.$$(selector, context).each(function (e) {
+        e.parentNode.removeChild(e);
+      });
+    };
+    function searchScriptsByRegExp (pattern, context) {
+      var m = $.$$('script', context).find(function (s) {
+        var m = s.innerHTML.match(pattern);
+        if (!m) {
+          return _.nop;
+        }
+        return m;
+      });
+      if (!m) {
+        return null;
+      }
+      return m.payload;
+    }
+    function searchScriptsByString (pattern, context) {
+      var m = $.$$('script', context).find(function (s) {
+        var m = s.innerHTML.indexOf(pattern);
+        if (m < 0) {
+          return _.nop;
+        }
+        return m;
+      });
+      if (!m) {
+        return null;
+      }
+      return m.value.innerHTML;
+    }
+    $.searchScripts = function (pattern, context) {
+      if (pattern instanceof RegExp) {
+        return searchScriptsByRegExp(pattern, context);
+      } else if (typeof pattern === 'string') {
+        return searchScriptsByString(pattern, context);
+      } else {
+        return null;
+      }
+    };
+    $.setCookie = function (key, value) {
+      var now = new Date();
+      now.setTime(now.getTime() + 3600 * 1000);
+      var tpl = _.T('{0}={1};path=/;');
+      document.cookie = tpl(key, value, now.toUTCString());
+    };
+    $.getCookie = function (key) {
+      var c = _.C(document.cookie.split(';')).find(function (v) {
+        var k = v.replace(/^\s*(\w+)=.+$/, '$1');
+        if (k !== key) {
+          return _.nop;
+        }
+      });
+      if (!c) {
+        return null;
+      }
+      c = c.value.replace(/^\s*\w+=([^;]+).+$/, '$1');
+      if (!c) {
+        return null;
+      }
+      return c;
+    };
+    $.resetCookies = function () {
+      var a = document.domain;
+      var b = document.domain.replace(/^www\./, '');
+      var c = document.domain.replace(/^(\w+\.)+?(\w+\.\w+)$/, '$2');
+      var d = (new Date(1e3)).toUTCString();
+      _.C(document.cookie.split(';')).each(function (v) {
+        var k = v.replace(/^\s*(\w+)=.+$/, '$1');
+        document.cookie = _.T('{0}=;expires={1};')(k, d);
+        document.cookie = _.T('{0}=;path=/;expires={1};')(k, d);
+        var e = _.T('{0}=;path=/;domain={1};expires={2};');
+        document.cookie = e(k, a, d);
+        document.cookie = e(k, b, d);
+        document.cookie = e(k, c, d);
+      });
+    };
+    $.captcha = function (imgSrc, cb) {
+      if (!config.externalServerSupport) {
+        return;
+      }
+      var a = document.createElement('canvas');
+      var b = a.getContext('2d');
+      var c = new Image();
+      c.src = imgSrc;
+      c.onload = function () {
+        a.width = c.width;
+        a.height = c.height;
+        b.drawImage(c, 0, 0);
+        var d = a.toDataURL();
+        var e = d.substr(d.indexOf(',') + 1);
+        $.post('http://www.wcpan.info/cgi-bin/captcha.cgi', {
+          i: e,
+        }, cb);
+      };
+    };
+    var patterns = [];
+    $.register = function (pattern) {
+      patterns.push(pattern);
+    };
+    function load () {
+      var tmp = {
+        version: GM.getValue('version', 0),
+        alignCenter: GM.getValue('align_center'),
+        changeBackground: GM.getValue('change_background'),
+        externalServerSupport: GM.getValue('external_server_support'),
+        redirectImage: GM.getValue('redirect_image'),
+        scaleImage: GM.getValue('scale_image'),
+      };
+      fixup(tmp);
+      save(tmp);
+      return tmp;
+    }
+    function save (c) {
+      GM.setValue('version', c.version);
+      GM.setValue('align_center', c.alignCenter);
+      GM.setValue('change_background', c.changeBackground);
+      GM.setValue('external_server_support', c.externalServerSupport);
+      GM.setValue('redirect_image', c.redirectImage);
+      GM.setValue('scale_image', c.scaleImage);
+    }
+    function fixup (c) {
+      var patches = [
+        function (c) {
+          var ac = typeof c.alignCenter !== 'undefined';
+          if (typeof c.changeBackground === 'undefined') {
+            c.changeBackground = ac ? c.alignCenter : true;
+          }
+          if (typeof c.scaleImage === 'undefined') {
+            c.scaleImage = ac ? c.alignCenter : true;
+          }
+          if (!ac) {
+            c.alignCenter = true;
+          }
+          if (typeof c.redirectImage === 'undefined') {
+            c.redirectImage = true;
+          }
+        },
+        function (c) {
+          if (typeof c.externalServerSupport === 'undefined') {
+            c.externalServerSupport = false;
+          }
+        },
+      ];
+      while (c.version < patches.length) {
+        patches[c.version](c);
+        ++c.version;
+      }
+    }
+    var config = null;
+    $.register({
+      rule: {
+        host: /^legnaleurc\.github\.io$/,
+        path: /^\/nopicads\/configure\.html$/,
+      },
+      ready: function () {
+        unsafeWindow.commit = function (data) {
+          data.version = config.version;
+          _.C(data).each(function (v, k) {
+            config[k] = v;
+          });
+          setTimeout(function () {
+            save(data);
+          }, 0);
+        };
+        unsafeWindow.render({
+          version: config.version,
+          options: {
+            alignCenter: {
+              type: 'checkbox',
+              value: config.alignCenter,
+              label: 'Align Center',
+              help: 'Align image to the center if possible. (default: enabled)',
+            },
+            changeBackground: {
+              type: 'checkbox',
+              value: config.changeBackground,
+              label: 'Change Background',
+              help: 'Use Firefox-like image background if possible. (default: enabled)',
+            },
+            redirectImage: {
+              type: 'checkbox',
+              value: config.redirectImage,
+              label: 'Redirect Image',
+              help: [
+                'Directly open image link if possible. (default: enabled)',
+                'If disabled, redirection will only works on link shortener sites.',
+              ].join('<br/>\n'),
+            },
+            scaleImage: {
+              type: 'checkbox',
+              value: config.scaleImage,
+              label: 'Scale Image',
+              help: 'When image loaded, scale it to fit window if possible. (default: enabled)',
+            },
+            externalServerSupport: {
+              type: 'checkbox',
+              value: config.externalServerSupport,
+              label: 'External Server Support',
+              help: [
+                'Send URL information to external server to enhance features (e.g.: captcha resolving). (default: disabled)',
+                'Affected sites:',
+                'urlz.so (captcha)',
+              ].join('<br/>\n'),
+            },
+          },
+        });
+      },
+    });
+    function dispatchByObject (rule, url_6) {
+      var matched = {};
+      var passed = _.C(rule).all(function (pattern, part) {
+        if (pattern instanceof RegExp) {
+          matched[part] = url_6[part].match(pattern);
+        } else if (pattern instanceof Array) {
+          var r = _.C(pattern).find(function (p) {
+            var m = url_6[part].match(p);
+            return m || _.nop;
+          });
+          matched[part] = r ? r.payload : null;
+        }
+        return !!matched[part];
+      });
+      return passed ? matched : null;
+    }
+    function dispatchByRegExp (rule, url_1) {
+      return url_1.match(rule);
+    }
+    function dispatchByArray (rules, url_1, url_3, url_6) {
+      var tmp = _.C(rules).find(function (rule) {
+        var m = dispatch(rule, url_1, url_3, url_6);
+        if (!m) {
+          return _.nop;
+        }
+        return m;
+      });
+      return tmp ? tmp.payload : null;
+    }
+    function dispatchByString (rule, url_3) {
+      var scheme = /\*|https?|file|ftp|chrome-extension/;
+      var host = /\*|(\*\.)?([^\/*]+)/;
+      var path = /\/.*/;
+      var up = new RegExp(_.T('^({scheme})://({host})?({path})$')({
+        scheme: scheme.source,
+        host: host.source,
+        path: path.source,
+      }));
+      var matched = rule.match(up);
+      if (!matched) {
+        return null;
+      }
+      scheme = matched[1];
+      host = matched[2];
+      var wc = matched[3];
+      var sd = matched[4];
+      path = matched[5];
+      if (scheme === '*' && !/https?/.test(url_3.scheme)) {
+        return null;
+      } else if (scheme !== url_3.scheme) {
+        return null;
+      }
+      if (scheme !== 'file' && host !== '*') {
+        if (wc) {
+          up = url_3.host.indexOf(sd);
+          if (up < 0 || up + sd.length !== url_3.host.length) {
+            return null;
+          }
+        } else if (host !== url_3.host) {
+          return null;
+        }
+      }
+      path = new RegExp(_.T('^{0}$')(path.replace(/[*.\[\]?+#]/g, function (c) {
+        if (c === '*') {
+          return '.*';
+        }
+        return '\\' + c;
+      })));
+      if (!path.test(url_3.path)) {
+        return null;
+      }
+      return url_3;
+    }
+    function dispatchByFunction (rule, url_1, url_3, url_6) {
+      return rule(url_1, url_3, url_6);
+    }
+    function dispatch (rule, url_1, url_3, url_6) {
+      if (rule instanceof RegExp) {
+        return dispatchByRegExp(rule, url_1);
+      }
+      if (rule instanceof Array) {
+        return dispatchByArray(rule, url_1, url_3, url_6);
+      }
+      if (typeof rule === 'function') {
+        return dispatchByFunction(rule, url_1, url_3, url_6);
+      }
+      if (typeof rule === 'string' || rule instanceof String) {
+        return dispatchByString(rule, url_3);
+      }
+      return dispatchByObject(rule, url_6);
+    }
+    function findHandler () {
+      var url_1 = window.location.toString();
+      var url_3 = {
+        scheme: window.location.protocol.slice(0, -1),
+        host: window.location.host,
+        path: window.location.pathname + window.location.search + window.location.hash,
+      };
+      var url_6 = {
+        scheme: window.location.protocol,
+        host: window.location.hostname,
+        port: window.location.port,
+        path: window.location.pathname,
+        query: window.location.search,
+        hash: window.location.hash,
+      };
+      var pattern = _.C(patterns).find(function (pattern) {
+        var m = dispatch(pattern.rule, url_1, url_3, url_6);
+        if (!m) {
+          return _.nop;
+        }
+        return m;
+      });
+      if (!pattern) {
+        return null;
+      }
+      var matched = pattern.payload;
+      pattern = pattern.value;
+      if (!pattern.start && !pattern.ready) {
+        return null;
+      }
+      return {
+        start: pattern.start ? _.P(pattern.start, matched) : _.nop,
+        ready: pattern.ready ? _.P(pattern.ready, matched) : _.nop,
+      };
+    }
+    function disableWindowOpen () {
+      unsafeWindow.open = _.nop;
+    }
+    function disableLeavePrompt () {
+      var seal = {
+        set: function () {
+          _.info('blocked onbeforeunload');
+        },
+      };
+      _.C([unsafeWindow, unsafeWindow.document.body]).each(function (o) {
+        if (!o) {
+          return;
+        }
+        o.onbeforeunload = undefined;
+        Object.defineProperty(o, 'onbeforeunload', seal);
+      });
+    }
+    $._main = function (isNodeJS) {
+      delete $._main;
+      if (isNodeJS) {
+        config = load();
+        return;
+      }
+      if (window.parent !== window.self) {
+        return;
+      }
+      var handler = findHandler();
+      if (!handler) {
+        _.info('does not match on `%s`', window.location.toString());
+        return;
+      }
+      config = load();
+      _.info('working on\n%s \nwith\n%o', window.location.toString(), config);
+      disableWindowOpen();
+      handler.start();
+      document.addEventListener('DOMContentLoaded', function () {
+        disableLeavePrompt();
+        handler.ready();
+      });
+    };
+    GM.registerMenuCommand('NoPicAds - Configure', function () {
+      GM.openInTab('https://legnaleurc.github.io/nopicads/configure.html');
+    });
+    return $;
+  }
+  if (typeof module !== 'undefined') {
+    module.exports = bootstrap;
+  } else {
+    $ = bootstrap({
+      _: _,
+      window: window,
+      unsafeWindow: unsafeWindow,
+      GM: {
+        getValue: GM_getValue,
+        setValue: GM_setValue,
+        xmlhttpRequest: GM_xmlhttpRequest,
+        getResourceText: GM_getResourceText,
+        addStyle: GM_addStyle,
+        getResourceURL: GM_getResourceURL,
+        openInTab: GM_openInTab,
+        registerMenuCommand: GM_registerMenuCommand,
+      },
+    });
+  }
+})();
 
 $.register({
   rule: {
