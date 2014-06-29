@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.35.1
+// @version        4.36.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.35.1/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -2180,7 +2180,7 @@ $.register({
 $.register({
   rule: {
     host: /^imageheli\.com|imgtube\.net|pixliv\.com$/,
-    path: /^\/img-([a-zA-Z0-9]+)\..+$/,
+    path: /^\/img-([a-zA-Z0-9\-]+)\..+$/,
   },
   ready: function () {
     'use strict';
@@ -2517,7 +2517,7 @@ $.register({
 $.register({
   rule: {
     host: /^imglocker\.com$/,
-    path: /^(\/\w+)\/([^.]+\.\w+)$/,
+    path: /^(\/\w+)\/([^.]+\.\w+)(\.html)?$/,
   },
   start: function (m) {
     'use strict';
@@ -2582,7 +2582,15 @@ $.register({
   }
   $.register({
     rule: {
-      host: /^(img(rill|next|savvy|\.spicyzilla)|image(corn|picsa)|www\.imagefolks|hosturimage|img-zone)\.com|img(candy|master)\.net|imgcloud\.co|pixup\.us|(www\.)?\.imgult\.com|(bulkimg|imgskull)\.info|image\.adlock\.org$/,
+      host: [
+        /^(img(rill|next|savvy|\.spicyzilla)|image(corn|picsa)|www\.imagefolks|hosturimage|img-zone)\.com$/,
+        /^img(candy|master)\.net$/,
+        /^imgcloud\.co|pixup\.us$/,
+        /^(www\.)?\.imgult\.com$/,
+        /^(bulkimg|imgskull)\.info$/,
+        /^image\.adlock\.org$/,
+        /^img\.yt$/,
+      ],
       path: /^\/img-.*\.html$/,
     },
     ready: handler,
@@ -2969,6 +2977,17 @@ $.register({
     },
   });
 })();
+
+$.register({
+  rule: {
+    host: /^moe\.god\.jp$/,
+  },
+  ready: function () {
+    'use strict';
+    var a = $('div div center a');
+    $.openLink(a.href);
+  },
+});
 
 $.register({
   rule: {
