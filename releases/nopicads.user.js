@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.36.0
+// @version        4.37.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.36.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -560,6 +560,46 @@ var $;
         }, cb);
       };
     };
+    function injectClone (vaccine) {
+      var injected;
+      if (typeof cloneInto !== 'function') {
+        injected = vaccine;
+      } else {
+        injected = cloneInto(vaccine, unsafeWindow);
+      }
+      return injected;
+    }
+    function injectFunction (vaccine) {
+      var injected;
+      if (typeof exportFunction !== 'function') {
+        injected = vaccine;
+      } else {
+        try {
+          injected = exportFunction(vaccine, unsafeWindow);
+        } catch(e) {
+          console.error(e);
+        }
+      }
+      return injected;
+    }
+    function injectReference () {
+      var injected;
+      if (typeof createObjectIn !== 'function') {
+        injected = {};
+      } else {
+        injected = createObjectIn(unsafeWindow);
+      }
+      return injected;
+    }
+    $.inject = function (vaccine) {
+      if (typeof vaccine === 'function') {
+        return injectFunction(vaccine);
+      } else if (typeof vaccine === 'undefined') {
+        return injectReference();
+      } else {
+        return injectClone(vaccine);
+      }
+    };
     var patterns = [];
     $.register = function (pattern) {
       patterns.push(pattern);
@@ -620,7 +660,7 @@ var $;
         path: /^\/nopicads\/configure\.html$/,
       },
       ready: function () {
-        unsafeWindow.commit = function (data) {
+        unsafeWindow.commit = $.inject(function (data) {
           data.version = config.version;
           _.C(data).each(function (v, k) {
             config[k] = v;
@@ -628,8 +668,8 @@ var $;
           setTimeout(function () {
             save(data);
           }, 0);
-        };
-        unsafeWindow.render({
+        });
+        unsafeWindow.render($.inject({
           version: config.version,
           options: {
             alignCenter: {
@@ -670,7 +710,7 @@ var $;
               ].join('<br/>\n'),
             },
           },
-        });
+        }));
       },
     });
     function dispatchByObject (rule, url_6) {
@@ -1342,19 +1382,20 @@ $.register({
   }
   function knockServer2 (script) {
     var post = unsafeWindow.$.post;
-    unsafeWindow.$.post = function (a, b, c) {
-      if (typeof c === 'function') {
-        setTimeout(function () {
-          var data = {
-            error: false,
-            message: {
-              url: '#',
-            },
-          };
-          c(JSON.stringify(data));
-        }, 1000);
+    unsafeWindow.$.post = $.inject(function (a, b, c) {
+      if (typeof c !== 'function') {
+        return;
       }
-    };
+      setTimeout(function () {
+        var data = {
+          error: false,
+          message: {
+            url: '#',
+          },
+        };
+        c(JSON.stringify(data));
+      }, 1000);
+    });
     var matches = script.match(/\$.post\('([^']*)'[^{]+(\{opt:'make_log'[^}]+\}\}),/i);
     var make_url = matches[1];
     var make_opts = eval('(' + matches[2] + ')');
@@ -2226,7 +2267,7 @@ $.register({
 (function () {
   'use strict';
   function run () {
-    var o = $('#download_box img');
+    var o = $('#download_box img[id]');
     $.openImage(o.src);
   }
   $.register({
@@ -2588,8 +2629,9 @@ $.register({
         /^imgcloud\.co|pixup\.us$/,
         /^(www\.)?\.imgult\.com$/,
         /^(bulkimg|imgskull)\.info$/,
-        /^image\.adlock\.org$/,
+        /^(image\.adlock|imgspot)\.org$/,
         /^img\.yt$/,
+        /^vava\.in$/,
       ],
       path: /^\/img-.*\.html$/,
     },
@@ -2701,6 +2743,17 @@ $.register({
 
 $.register({
   rule: {
+    host: /^(www\.)?\w+\.link-protector\.com$/,
+  },
+  ready: function (m) {
+    'use strict';
+    var f = $('form[style="font-weight:normal;font-size:12;font-family:Verdana;"]');
+    $.openLink(f.action);
+  },
+});
+
+$.register({
+  rule: {
     host: /\.link2dollar\.com$/,
     path: /^\/\d+$/,
   },
@@ -2745,6 +2798,57 @@ $.register({
     /^(([\w]{8}|www)\.)?youfap\.me$/,
     /^warning-this-linkcode-will-cease-working-soon\.www\.linkbucksdns\.com$/,
   ];
+  function findToken (context) {
+    var script = $.$$('script', context).find(function (n) {
+      if (n.innerHTML.indexOf('window[\'init\' + \'Lb\' + \'js\' + \'\']') < 0) {
+        return _.nop;
+      }
+      return n.innerHTML;
+    });
+    if (!script) {
+      _.warn('pattern changed');
+      return null;
+    }
+    script = script.payload;
+    var m = script.match(/AdPopUrl\s*:\s*'.+\?ref=([\w\d]+)'/);
+    var token = m[1];
+    m = script.match(/=\s*(\d+);/);
+    var ak = parseInt(m[1], 10);
+    var re = /\+\s*(\d+);/g;
+    var tmp = null;
+    while((m = re.exec(script)) !== null) {
+      tmp = m[1];
+    }
+    ak += parseInt(tmp, 10);
+    return {
+      t: token,
+      aK: ak,
+    };
+  }
+  function sendRequest (token) {
+    _.info('sending token: %o', token);
+    var i = setInterval(function () {
+      $.get('/intermission/loadTargetUrl', token, function (text) {
+        var data = JSON.parse(text);
+        _.info('response: %o', data);
+        if (!data.Success && data.Errors[0] === 'Invalid token') {
+          _.info('got invalid token');
+          clearInterval(i);
+          $.get(window.location.toString(), {}, function (text) {
+            var d = $.toDOM(text);
+            var t = findToken(d);
+            sendRequest(t);
+          });
+          return;
+        }
+        if (data.Success && !data.AdBlockSpotted && data.Url) {
+          clearInterval(i);
+          $.openLink(data.Url);
+          return;
+        }
+      });
+    }, 1000);
+  }
   $.register({
     rule: {
       host: hostRules,
@@ -2771,48 +2875,8 @@ $.register({
         $.openLink('../');
         return;
       }
-      var script = $.$$('script').find(function (n) {
-        if (n.innerHTML.indexOf('window[\'init\' + \'Lb\' + \'js\' + \'\']') < 0) {
-          return _.nop;
-        }
-        return n.innerHTML;
-      });
-      if (!script) {
-        _.warn('pattern changed');
-        return;
-      }
-      script = script.payload;
-      var m = script.match(/AdPopUrl\s*:\s*'.+\?ref=([\w\d]+)'/);
-      var token = m[1];
-      m = script.match(/=\s*(\d+);/);
-      var ak = parseInt(m[1], 10);
-      var re = /\+\s*(\d+);/g;
-      var tmp = null;
-      while((m = re.exec(script)) !== null) {
-        tmp = m[1];
-      }
-      ak += parseInt(tmp, 10);
-      _.info({
-        t: token,
-        aK: ak,
-      });
-      var i = setInterval(function () {
-        $.get('/intermission/loadTargetUrl', {
-          t: token,
-          aK: ak,
-        }, function (text) {
-          var data = JSON.parse(text);
-          _.info(data);
-          if (!data.Success && data.Errors[0] === 'Invalid token') {
-            window.location.reload();
-            return;
-          }
-          if (data.Success && !data.AdBlockSpotted && data.Url) {
-            clearInterval(i);
-            $.openLink(data.Url);
-          }
-        });
-      }, 1000);
+      var token = findToken(document);
+      sendRequest(token);
     },
   });
 })();
@@ -3460,7 +3524,7 @@ $.register({
     var Fingerprint = unsafeWindow.Fingerprint;
     var browserToken = null;
     if (Fingerprint) {
-      browserToken = (new Fingerprint({canvas: !0})).get();
+      browserToken = (new Fingerprint($.inject({canvas: !0}))).get();
     } else {
       browserToken = Math.round((new Date()).getTime() / 1000);
     }
@@ -3494,7 +3558,7 @@ $.register({
         afterGotSessionId(m[1]);
         return;
       }
-      var o = MutationObserver(function (mutations) {
+      var o = new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
           var m = $.searchScripts(/sessionId: "([\d\w]+)",/);
           if (m) {
