@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.37.0
+// @version        4.37.1
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.0/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -1401,7 +1401,7 @@ $.register({
     var make_opts = eval('(' + matches[2] + ')');
     function makeLog () {
         make_opts.opt = 'make_log';
-        post(make_url, make_opts, function (text) {
+        post(make_url, $.inject(make_opts), $.inject(function (text) {
           var data = JSON.parse(text);
           _.info('make_log', data);
           if (!data.message) {
@@ -1409,11 +1409,11 @@ $.register({
             return;
           }
           $.openLink(data.message.url);
-        });
+        }));
     }
     function checkLog () {
       make_opts.opt = 'check_log';
-      post(make_url, make_opts, function (text) {
+      post(make_url, $.inject(make_opts), $.inject(function (text) {
         var data = JSON.parse(text);
         _.info('check_log', data);
         if (!data.message) {
@@ -1421,14 +1421,14 @@ $.register({
           return;
         }
         makeLog();
-      });
+      }));
     }
     function checksLog () {
       make_opts.opt = 'checks_log';
-      post(make_url, make_opts, function () {
+      post(make_url, $.inject(make_opts), $.inject(function () {
         _.info('checks_log');
         checkLog();
-      });
+      }));
     }
     checksLog();
   }
