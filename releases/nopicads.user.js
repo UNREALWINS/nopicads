@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.37.1
+// @version        4.37.2
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.1/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -862,7 +862,7 @@ var $;
         config = load();
         return;
       }
-      if (window.parent !== window.self) {
+      if (window.top !== window.self) {
         return;
       }
       var handler = findHandler();
@@ -1132,17 +1132,19 @@ $.register({
         return;
       }
       $.removeNodes('iframe');
+      unsafeWindow.cookieCheck = $.inject(_.nop);
       h = unsafeWindow.eu;
       if (!h) {
         h = $('#adfly_bar');
         unsafeWindow.close_bar();
         return;
       }
-      var a = h.indexOf('!HiTommy'), b = '';
+      var a = h.indexOf('!HiTommy');
       if (a >= 0) {
         h = h.substring(0, a);
       }
       a = '';
+      b = '';
       for (var i = 0; i < h.length; ++i) {
         if (i % 2 === 0) {
           a = a + h.charAt(i);
