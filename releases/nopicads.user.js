@@ -3,7 +3,7 @@
 // @namespace      FoolproofProject
 // @description    No Picture Advertisements
 // @copyright      2012+, legnaleurc (https://github.com/legnaleurc/nopicads)
-// @version        4.37.2
+// @version        4.38.0
 // @license        BSD
 // @updateURL      https://legnaleurc.github.io/nopicads/releases/nopicads.meta.js
 // @downloadURL    https://legnaleurc.github.io/nopicads/releases/nopicads.user.js
@@ -17,9 +17,9 @@
 // @grant          GM_registerMenuCommand
 // @grant          GM_setValue
 // @run-at         document-start
-// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/css/align_center.css
-// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/css/scale_image.css
-// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.37.2/img/imagedoc-darknoise.png
+// @resource       alignCenter https://raw.githubusercontent.com/legnaleurc/nopicads/v4.38.0/css/align_center.css
+// @resource       scaleImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.38.0/css/scale_image.css
+// @resource       bgImage https://raw.githubusercontent.com/legnaleurc/nopicads/v4.38.0/img/imagedoc-darknoise.png
 // @include        http://*
 // @include        https://*
 // ==/UserScript==
@@ -2579,6 +2579,10 @@ $.register({
       host: /^pic\.re$/,
       path: /^\/([^\/]+)$/,
     },
+    {
+      host: /^imagebucks\.biz$/,
+      path: /^\/([^\/]+)\/.+\.jpg$/,
+    },
   ],
   ready: function (m) {
     'use strict';
@@ -2644,9 +2648,29 @@ $.register({
       host: /^08lkk\.com$/,
       path: /^\/\d+\/img-.*\.html$/,
     },
-    ready: handler,
+    start: function () {
+      $.get(window.location.toString(), {}, function (data) {
+        var a = $.toDOM(data);
+        var bbcode = $.$('#imagecodes input', a);
+        bbcode = bbcode.value.match(/.+\[IMG\]([^\[]+)\[\/IMG\].+/);
+        bbcode = bbcode[1];
+        bbcode = bbcode.replace('small', 'big');
+        $.openImage(bbcode);
+      });
+    },
   });
 })();
+
+$.register({
+  rule: {
+    host: /^imgseeds\.com$/,
+  },
+  ready: function () {
+    'use strict';
+    var img = $('#img1');
+    $.openImage(img.src);
+  },
+});
 
 $.register({
   rule: 'http://imgtheif.com/image/*.html',
@@ -2861,7 +2885,7 @@ $.register({
       $.resetCookies();
       $.removeNodes('iframe');
       if (m.path[1] !== null) {
-        $.openLink(m.path[1]);
+        $.openLink(m.path[1] + window.location.search);
       }
     }
   });
@@ -3288,7 +3312,7 @@ $.register({
 
 $.register({
   rule: {
-    host: /^pixpal\.net|imgsure\.com$/,
+    host: /^pixpal\.net|(imgsure|picexposed)\.com$/,
   },
   ready: function () {
     'use strict';
@@ -3316,6 +3340,18 @@ $.register({
     'use strict';
     var i = $('#screenshot-image');
     $.openImage(i.src);
+  },
+});
+
+$.register({
+  rule: {
+    host: /^pronpic\.org$/,
+  },
+  ready: function () {
+    'use strict';
+    var img = $('table.new_table2:nth-child(2) img.link');
+    var url = img.src.replace('th_', '');
+    $.openImage(url);
   },
 });
 
@@ -3374,13 +3410,15 @@ $.register({
     $.openImage(i.src);
   }
   $.register({
-    rule: [
-      {
-        host: /^(image(decode|ontime)|(zonezeed|zelje|croft|myhot|dam)image|pic(\.apollon-fervor|stwist))\.com|(img(serve|coin|fap)|gallerycloud)\.net|hotimages\.eu|(imgstudio|dragimage)\.org$/,
-        path: /^\/img-.*\.html$/,
-      },
-      'http://08lkk.com/Photo/img-*.html',
-    ],
+    rule: {
+      host: [
+        /^(image(decode|ontime)|(zonezeed|zelje|croft|myhot|dam)image|pic(\.apollon-fervor|stwist)|www\.imglemon)\.com$/,
+        /^(img(serve|coin|fap)|gallerycloud)\.net$/,
+        /^hotimages\.eu$/,
+        /^(imgstudio|dragimage)\.org$/,
+      ],
+      path: /^\/img-.*\.html$/,
+    },
     ready: ready,
   });
   $.register({
@@ -3394,6 +3432,19 @@ $.register({
       window.location.reload();
     },
     ready: ready,
+  });
+  $.register({
+    rule: {
+      host: /^08lkk\.com$/,
+      path: /^\/Photo\/img-.+\.html$/,
+    },
+    start: function () {
+      $.get(window.location.toString(), {}, function (data) {
+        var a = $.toDOM(data);
+        var i = $('img[class^=centred]', a);
+        $.openImage(i.src);
+      });
+    },
   });
 })();
 
